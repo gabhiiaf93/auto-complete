@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './App.css';
 // import { limitFilterCalls } from './helper';
 import { getSearchedData } from './data-service';
@@ -6,26 +6,36 @@ import { SearchedItemList } from './components/search-item-list';
 import { SearchInput } from './components/search-input';
 
 function App() {
-  const [searchParam, setSearchParam] = useState('');
   const [list, updateList] = useState([]);
-  const updateSearchHandler = (e) => {
-    setSearchParam(e.target.value);
-  }
-  // const getSearchData = useCallback(limitFilterCalls(function (searchInput, updateSearchList){
-  //   console.log('CALLED',searchInput)
-  //   getSearchedData(searchInput).then((resolvedList) => {
-  //     updateSearchList(resolvedList);
-  //   });
-  // }, 1000), [setSearchParam]);  
 
-  useEffect(() => {
-    getSearchedData(searchParam).then((resolvedList) => {
+  const updateSearchHandler = (e) => {
+    getSearchedData(e.target.value).then((resolvedList) => {
       updateList(resolvedList);
     });
-  }, [searchParam]);
+  }
+
+  const limitFilterCalls = (callback) => {
+    const context = this;
+    let timer;
+    return function(...rest) {
+      if(timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        callback.apply(context, [...rest])
+      }, 300);
+    }
+  }
+
+  const optimizedSearchHandler = useCallback(limitFilterCalls(updateSearchHandler), []);
+  useEffect(() => {
+    getSearchedData('').then((resolvedList) => {
+      updateList(resolvedList);
+    });
+  }, []);
+
   return (
     <div className="App">
-      <SearchInput searchParam={searchParam} updateSearchHandler={updateSearchHandler}/>
+      <SearchInput updateSearchHandler={optimizedSearchHandler}/>
       <SearchedItemList items={list}/>
     </div>
   );
